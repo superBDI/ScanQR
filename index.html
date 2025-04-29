@@ -19,7 +19,7 @@
         h2 {
             margin-bottom: 20px;
         }
-        #scan-btn, #close-btn {
+        #close-btn {
             margin: 10px;
             padding: 12px 24px;
             font-size: 16px;
@@ -29,9 +29,8 @@
 </head>
 <body>
 
-    <h2>📷 Нажмите для сканирования QR-кода</h2>
+    <h2>📷 Наведите камеру на QR-код</h2>
 
-    <button id="scan-btn">📷 Сканировать QR</button>
     <button id="close-btn">❌ Отменить</button>
 
     <script>
@@ -40,55 +39,41 @@
 
         let qrText = null;
 
-        // Обработчик кнопки сканирования
-        document.getElementById('scan-btn').addEventListener('click', () => {
-            console.log("Открытие встроенного сканера Telegram...");
-            try {
-                Telegram.WebApp.showScanQrPopup({});
-            } catch (err) {
-                console.error("Ошибка открытия сканера:", err);
-            }
-        });
+        // Пытаемся сразу открыть встроенный сканер при загрузке
+        try {
+            console.log("Автоматическое открытие сканера...");
+            Telegram.WebApp.showScanQrPopup({});
+        } catch (err) {
+            console.error("Ошибка запуска сканера:", err);
+        }
 
-        // Обработка события получения текста QR-кода
+        // Обработка события получения QR-кода
         Telegram.WebApp.onEvent('qrTextReceived', (event) => {
             let code = event?.data ?? event?.detail?.data;
-            console.log("QR-код получен через событие:", code);
+            console.log("QR-код получен:", code);
 
             if (code) {
                 qrText = code;
                 Telegram.WebApp.closeScanQrPopup();
 
-                // Показать кнопку отправки
-                Telegram.WebApp.MainButton.setText('✅ Отправить QR-код');
-                Telegram.WebApp.MainButton.show();
-            } else {
-                console.error("QR-код не распознан или пустой.");
-            }
-        });
-
-        // При нажатии на основную кнопку Telegram
-        Telegram.WebApp.MainButton.onClick(() => {
-            console.log("Нажатие MainButton, qrText:", qrText);
-            if (qrText) {
                 try {
                     Telegram.WebApp.sendData(qrText);
                     console.log("✅ QR-код отправлен:", qrText);
                 } catch (error) {
-                    console.error("Ошибка при отправке через sendData:", error);
+                    console.error("Ошибка отправки через sendData:", error);
                 }
             } else {
-                console.error("Нет QR-кода для отправки.");
+                console.error("QR-код пустой или нераспознан.");
             }
         });
 
-        // Кнопка "Закрыть" приложение
+        // Кнопка закрытия приложения
         document.getElementById('close-btn').addEventListener('click', () => {
             console.log("Закрытие приложения пользователем.");
             Telegram.WebApp.close();
         });
-
     </script>
 
 </body>
 </html>
+
