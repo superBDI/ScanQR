@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Сканер QR-кода</title>
+    <script src="https://unpkg.com/html5-qrcode"></script> <!-- Библиотека сканера -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f2f2f2;
+            margin: 0;
+            padding: 20px;
+        }
+        #qr-reader {
+            width: 300px;
+            margin: auto;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>📷 Сканируйте QR-код</h2>
+    <div id="qr-reader"></div>
+
+    <script>
+        // Проверка, что мы действительно в Telegram WebApp
+        if (!window.Telegram || !Telegram.WebApp) {
+            alert("❗️ Это не Telegram WebApp среда. Откройте через Telegram.");
+        } else {
+            Telegram.WebApp.ready();
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Отправляем данные обратно в бота
+            Telegram.WebApp.sendData(decodedText);
+        }
+
+        function onScanError(errorMessage) {
+            // Можно обрабатывать ошибки сканирования
+            console.warn(errorMessage);
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "qr-reader", 
+            { fps: 10, qrbox: 250 }, 
+            false
+        );
+
+        html5QrcodeScanner.render(onScanSuccess, onScanError);
+    </script>
+</body>
+</html>
