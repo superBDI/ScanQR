@@ -1,57 +1,85 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-        <meta charset="UTF-8">
-        <title>Сканер QR-кода</title>
-        <script src="https://telegram.org/js/telegram-web-app.js"></script> <!-- Обязательно! SDK Telegram -->
-        <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script> <!-- Библиотека сканера -->
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                text-align: center;
-                background: #f9f9f9;
-                margin: 0;
-                padding: 20px;
-            }
-            #qr-reader {
-                width: 300px;
-                margin: 20px auto;
-            }
-        </style>
-</head>    
+    <meta charset="UTF-8">
+    <title>Сканер QR-кода</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- html5-qrcode сканер -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        #qr-reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        #close-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
 <body>
 
     <h2>📷 Сканируйте QR-код</h2>
     <div id="qr-reader"></div>
+    <button id="close-btn">❌ Отменить</button>
 
     <script>
-        // Правильная проверка окружения Telegram WebApp
-        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-            Telegram.WebApp.ready();
-            console.log("✅ Telegram WebApp загружен корректно.");
+        (async function () {
+            if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+                Telegram.WebApp.ready();
+                console.log("✅ Telegram WebApp загружен корректно.");
 
-            function onScanSuccess(decodedText, decodedResult) {
-                console.log(`QR-код найден: ${decodedText}`);
-                Telegram.WebApp.sendData(decodedText); // Отправляем UUID обратно в бота
+                // Конфигурация сканера
+                const config = { 
+                    fps: 15, 
+                    qrbox: { width: 300, height: 300 } 
+                };
+
+                const html5QrCode = new Html5Qrcode("qr-reader");
+
+                try {
+                    await html5QrCode.start(
+                        { facingMode: "environment" }, // Задняя камера
+                        config,
+                        (decodedText, decodedResult) => {
+                            console.log(`QR-код найден: ${decodedText}`);
+                            Telegram.WebApp.sendData(decodedText); // Отправляем данные в бота
+                        },
+                        (errorMessage) => {
+                            console.warn(`Ошибка сканирования: ${errorMessage}`);
+                            // Можно убрать это сообщение если слишком много ошибок
+                        }
+                    );
+                } catch (err) {
+                    console.error(`Ошибка запуска сканера: ${err}`);
+                    Telegram.WebApp.showAlert(`Не удалось запустить камеру: ${err}`);
+                }
+
+                // Кнопка "Закрыть" закрывает WebApp
+                document.getElementById('close-btn').addEventListener('click', () => {
+                    html5QrCode.stop().then(() => {
+                        Telegram.WebApp.close();
+                    }).catch((err) => {
+                        console.error(`Ошибка остановки сканера: ${err}`);
+                        Telegram.WebApp.close(); // Всё равно закрываем
+                    });
+                });
+
+            } else {
+                alert("❗ Это не Telegram WebApp среда. Пожалуйста, откройте через кнопку бота Telegram.");
             }
-
-            function onScanError(errorMessage) {
-                console.warn(`Ошибка сканирования: ${errorMessage}`);
-            }
-
-            let html5QrcodeScanner = new Html5QrcodeScanner(
-                "qr-reader", 
-                { fps: 10, qrbox: 250 },
-                false
-            );
-            html5QrcodeScanner.render(onScanSuccess, onScanError);
-
-        } else {
-            // Если не внутри Telegram WebApp
-            alert("❗ Это не Telegram WebApp среда. Пожалуйста, откройте через кнопку бота Telegram.");
-        }
+        })();
     </script>
 
 </body>
 </html>
-
