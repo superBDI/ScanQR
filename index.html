@@ -5,14 +5,12 @@
     <title>Сканер QR-кода</title>
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- HTML5 QR Code Scanner -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         html, body {
-            height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f9f9f9;
+            height: 100%;
+            background: #f9f9f9;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
@@ -23,11 +21,13 @@
             margin-top: 20px;
             margin-bottom: 10px;
         }
-        #qr-reader {
+        video {
             width: 100%;
             max-width: 400px;
-            height: calc(100vh - 160px); /* Отступы сверху и снизу */
-            margin: 0 auto;
+            height: auto;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            margin-top: 10px;
         }
         #close-btn {
             margin-top: 20px;
@@ -40,59 +40,69 @@
 <body>
 
     <h2>📷 Сканируйте QR-код</h2>
-    <div id="qr-reader"></div>
+    <video id="video" autoplay playsinline></video>
     <button id="close-btn">❌ Отменить</button>
 
     <script>
         (async function () {
             if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
                 Telegram.WebApp.ready();
-                Telegram.WebApp.expand(); // <-- Растягиваем окно!
+                Telegram.WebApp.expand(); // Растягиваем окно
 
                 console.log("✅ Telegram WebApp загружен корректно.");
 
-                const config = { 
-                    fps: 10, 
-                    qrbox: { width: 300, height: 300 },
-                    experimentalFeatures: {
-                        useBarCodeDetectorIfSupported: true // Улучшенная распознаваемость
-                    }
-                };
-
-                const html5QrCode = new Html5Qrcode("qr-reader");
-
-                try {
-                    await html5QrCode.start(
-                        { facingMode: "environment" }, // Задняя камера
-                        config,
-                        (decodedText, decodedResult) => {
-                            console.log(`QR-код найден: ${decodedText}`);
-                            Telegram.WebApp.sendData(decodedText); // Отправляем QR-данные в бота
-                        },
-                        (errorMessage) => {
-                            console.warn(`Ошибка сканирования: ${errorMessage}`);
-                            // Можно показать Telegram.WebApp.showAlert() при необходимости
-                        }
-                    );
-                } catch (err) {
-                    console.error(`Ошибка запуска сканера: ${err}`);
-                    Telegram.WebApp.showAlert(`Не удалось запустить камеру: ${err}`);
+                if (!('BarcodeDetector' in window)) {
+                    alert('❗ Ваш браузер не поддерживает BarcodeDetector API.');
+                    return;
                 }
 
-                document.getElementById('close-btn').addEventListener('click', () => {
-                    html5QrCode.stop().then(() => {
-                        Telegram.WebApp.close();
-                    }).catch((err) => {
-                        console.error(`Ошибка остановки сканера: ${err}`);
+                const video = document.getElementById('video');
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: 'environment' } }
+                    });
+                    video.srcObject = stream;
+                    await video.play();
+
+                    const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+
+                    async function scanFrame() {
+                        try {
+                            const barcodes = await barcodeDetector.detect(video);
+                            if (barcodes.length > 0) {
+                                console.log("✅ QR-код найден:", barcodes[0].rawValue);
+                                Telegram.WebApp.sendData(barcodes[0].rawValue);
+
+                                // Останавливаем камеру после успешного сканирования
+                                stream.getTracks().forEach(track => track.stop());
+                            } else {
+                                requestAnimationFrame(scanFrame);
+                            }
+                        } catch (error) {
+                            console.error("Ошибка детекции:", error);
+                            requestAnimationFrame(scanFrame);
+                        }
+                    }
+
+                    scanFrame();
+
+                    document.getElementById('close-btn').addEventListener('click', () => {
+                        stream.getTracks().forEach(track => track.stop());
                         Telegram.WebApp.close();
                     });
-                });
+
+                } catch (err) {
+                    console.error(`Ошибка запуска камеры: ${err}`);
+                    Telegram.WebApp.showAlert(`Не удалось получить доступ к камере: ${err}`);
+                }
 
             } else {
-                alert("❗ Это не Telegram WebApp среда. Откройте через кнопку бота Telegram.");
+                alert("❗ Это не Telegram WebApp среда. Откройте через кнопку в боте.");
             }
         })();
     </script>
 
 </body>
 </html>
+
