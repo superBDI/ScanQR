@@ -37,6 +37,7 @@
         (async function () {
             if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
                 Telegram.WebApp.ready();
+                Telegram.WebApp.expand(); // <<< Вот здесь сразу разворачиваем!
                 console.log("✅ Telegram WebApp загружен корректно.");
 
                 // Конфигурация сканера
